@@ -55,7 +55,10 @@ interface IPool {
     function token1() external view returns (address);
 
     /// @notice Address of linked PoolFees.sol
-    function poolFees() external view returns (address);
+    function fees() external view returns (address);
+
+    /// @notice Address of linked PoolFees.sol
+    function pairFee() external view returns (uint256);
 
     /// @notice Address of PoolFactory that created this contract
     function factory() external view returns (address);

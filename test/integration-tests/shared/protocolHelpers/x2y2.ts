@@ -1,5 +1,5 @@
 import { BigNumber } from 'ethers'
-import X2Y2_ABI from './../../shared/abis/X2Y2.json'
+import X2Y2_ABI from '../abis/X2Y2.json'
 import fs from 'fs'
 import hre from 'hardhat'
 const { ethers } = hre

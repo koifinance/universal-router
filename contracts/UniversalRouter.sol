@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.17;
 
-// Command implementations
 import {Dispatcher} from './base/Dispatcher.sol';
 import {RewardsCollector} from './base/RewardsCollector.sol';
 import {RouterParameters, RouterImmutables} from './base/RouterImmutables.sol';
+import {Constants} from './libraries/Constants.sol';
 import {Commands} from './libraries/Commands.sol';
 import {IUniversalRouter} from './interfaces/IUniversalRouter.sol';
+import {ReentrancyLock} from './base/ReentrancyLock.sol';
 
-contract UniversalRouter is RouterImmutables, IUniversalRouter, Dispatcher, RewardsCollector {
+contract UniversalRouter is RouterImmutables, IUniversalRouter, Dispatcher, RewardsCollector, ReentrancyLock {
     modifier checkDeadline(uint256 deadline) {
         if (block.timestamp > deadline) revert TransactionDeadlinePassed();
         _;
@@ -25,8 +26,8 @@ contract UniversalRouter is RouterImmutables, IUniversalRouter, Dispatcher, Rewa
         execute(commands, inputs);
     }
 
-    /// @inheritdoc Dispatcher
-    function execute(bytes calldata commands, bytes[] calldata inputs) public payable override isNotLocked {
+    /// @inheritdoc IUniversalRouter
+    function execute(bytes calldata commands, bytes[] calldata inputs) public payable isNotLocked {
         bool success;
         bytes memory output;
         uint256 numCommands = commands.length;
@@ -36,7 +37,7 @@ contract UniversalRouter is RouterImmutables, IUniversalRouter, Dispatcher, Rewa
         for (uint256 commandIndex = 0; commandIndex < numCommands;) {
             bytes1 command = commands[commandIndex];
 
-            bytes calldata input = inputs[commandIndex];
+            bytes memory input = inputs[commandIndex];
 
             (success, output) = dispatch(command, input);
 
@@ -54,6 +55,6 @@ contract UniversalRouter is RouterImmutables, IUniversalRouter, Dispatcher, Rewa
         return command & Commands.FLAG_ALLOW_REVERT == 0;
     }
 
-    /// @notice To receive ETH from WETH and NFT protocols
+    // To receive ETH from WETH and NFT protocols
     receive() external payable {}
 }

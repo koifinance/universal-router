@@ -2,21 +2,18 @@
 pragma solidity ^0.8.17;
 
 import {V3Path} from './V3Path.sol';
-import {BytesLib} from './BytesLib.sol';
-import {SafeCast} from 'contracts/interfaces/external/SafeCast.sol';
-import {ICLPool} from 'contracts/interfaces/external/ICLPool.sol';
-import {ICLSwapCallback} from 'contracts/interfaces/external/ICLSwapCallback.sol';
+import {SafeCast} from '@uniswap/v3-core/contracts/libraries/SafeCast.sol';
+import {IUniswapV3Pool} from '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
+import {IUniswapV3SwapCallback} from '@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol';
 import {Constants} from '../../../libraries/Constants.sol';
 import {RouterImmutables} from '../../../base/RouterImmutables.sol';
 import {Permit2Payments} from '../../Permit2Payments.sol';
 import {Constants} from '../../../libraries/Constants.sol';
 import {ERC20} from 'solmate/src/tokens/ERC20.sol';
-import {Clones} from '@openzeppelin/contracts/proxy/Clones.sol';
 
 /// @title Router for Uniswap v3 Trades
-abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCallback {
+abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, IUniswapV3SwapCallback {
     using V3Path for bytes;
-    using BytesLib for bytes;
     using SafeCast for uint256;
 
     error V3InvalidSwap();
@@ -24,6 +21,7 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
     error V3TooMuchRequested();
     error V3InvalidAmountOut();
     error V3InvalidCaller();
+    event SwapIn(bool zeroForOne, int256 amount0Delta, int256 amount1Delta, uint256 amount, uint256 amountOutMinimum);
 
     /// @dev Used as the placeholder value for maxAmountIn, because the computed amount in for an exact output swap
     /// can never actually be this value
@@ -40,13 +38,12 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
 
     function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
         if (amount0Delta <= 0 && amount1Delta <= 0) revert V3InvalidSwap(); // swaps entirely within 0-liquidity regions are not supported
-        (, address payer) = abi.decode(data, (bytes, address));
-        bytes calldata path = data.toBytes(0);
+        (bytes memory path, address payer) = abi.decode(data, (bytes, address));
 
         // because exact output swaps are executed in reverse order, in this case tokenOut is actually tokenIn
-        (address tokenIn, int24 tickSpacing, address tokenOut) = path.decodeFirstPool();
+        (address tokenIn, address tokenOut, uint24 fee) = path.decodeFirstPool();
 
-        if (computePoolAddress(tokenIn, tokenOut, tickSpacing) != msg.sender) revert V3InvalidCaller();
+        if (computePoolAddress(tokenIn, tokenOut, fee) != msg.sender) revert V3InvalidCaller();
 
         (bool isExactInput, uint256 amountToPay) =
             amount0Delta > 0 ? (tokenIn < tokenOut, uint256(amount0Delta)) : (tokenOut < tokenIn, uint256(amount1Delta));
@@ -58,7 +55,7 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
             // either initiate the next swap or pay
             if (path.hasMultiplePools()) {
                 // this is an intermediate step so the payer is actually this contract
-                path = path.skipToken();
+                path.skipToken();
                 _swap(-amountToPay.toInt256(), msg.sender, path, payer, false);
             } else {
                 if (amountToPay > maxAmountInCached) revert V3TooMuchRequested();
@@ -78,7 +75,7 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
         address recipient,
         uint256 amountIn,
         uint256 amountOutMinimum,
-        bytes calldata path,
+        bytes memory path,
         address payer
     ) internal {
         // use amountIn == Constants.CONTRACT_BALANCE as a flag to swap the entire balance of the contract
@@ -100,12 +97,20 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
                 true
             );
 
-            amountIn = uint256(-(zeroForOne ? amount1Delta : amount0Delta));
+            //broken line of code
+            //amountIn = uint256(-(zeroForOne ? amount1Delta : amount0Delta));
+
+            if(zeroForOne)
+                amountIn = uint256(-amount1Delta);
+            else
+                amountIn = uint256(-amount0Delta);
+
+            emit SwapIn(zeroForOne, amount0Delta, amount1Delta, amountIn, amountOutMinimum);
 
             // decide whether to continue or terminate
             if (hasMultiplePools) {
                 payer = address(this);
-                path = path.skipToken();
+                path.skipToken();
             } else {
                 amountOut = amountIn;
                 break;
@@ -125,14 +130,19 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
         address recipient,
         uint256 amountOut,
         uint256 amountInMaximum,
-        bytes calldata path,
+        bytes memory path,
         address payer
     ) internal {
         maxAmountInCached = amountInMaximum;
         (int256 amount0Delta, int256 amount1Delta, bool zeroForOne) =
             _swap(-amountOut.toInt256(), recipient, path, payer, false);
 
-        uint256 amountOutReceived = zeroForOne ? uint256(-amount1Delta) : uint256(-amount0Delta);
+        uint256 amountOutReceived;// = zeroForOne ? uint256(-amount1Delta) : uint256(-amount0Delta);
+
+        if(zeroForOne)
+            amountOutReceived = uint256(-amount1Delta);
+        else
+            amountOutReceived = uint256(-amount0Delta);
 
         if (amountOutReceived != amountOut) revert V3InvalidAmountOut();
 
@@ -141,14 +151,15 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
 
     /// @dev Performs a single swap for both exactIn and exactOut
     /// For exactIn, `amount` is `amountIn`. For exactOut, `amount` is `-amountOut`
-    function _swap(int256 amount, address recipient, bytes calldata path, address payer, bool isExactIn)
+    function _swap(int256 amount, address recipient, bytes memory path, address payer, bool isExactIn)
         private
         returns (int256 amount0Delta, int256 amount1Delta, bool zeroForOne)
     {
-        (address tokenIn, int24 tickSpacing, address tokenOut) = path.decodeFirstPool();
+        (address tokenIn, address tokenOut, uint24 fee) = path.decodeFirstPool();
 
         zeroForOne = isExactIn ? tokenIn < tokenOut : tokenOut < tokenIn;
-        (amount0Delta, amount1Delta) = ICLPool(computePoolAddress(tokenIn, tokenOut, tickSpacing)).swap(
+
+        (amount0Delta, amount1Delta) = IUniswapV3Pool(computePoolAddress(tokenIn, tokenOut, fee)).swap(
             recipient,
             zeroForOne,
             amount,
@@ -157,17 +168,22 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, ICLSwapCall
         );
     }
 
-    function computePoolAddress(address tokenA, address tokenB, int24 tickSpacing)
-        private
-        view
-        returns (address pool)
-    {
-        (address token0, address token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        bytes32 salt = keccak256(abi.encode(token0, token1, tickSpacing));
-        pool = Clones.predictDeterministicAddress({
-            implementation: UNISWAP_V3_IMPLEMENTATION,
-            salt: salt,
-            deployer: UNISWAP_V3_FACTORY
-        });
+    function computePoolAddress(address tokenA, address tokenB, uint24 fee) private view returns (address pool) {
+        if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
+        pool = address(
+            uint160(
+                uint256(
+                    keccak256(
+                        abi.encodePacked(
+                            bytes32(0x2020dba91b30cc0006188af794c2fb30dd8520db7e2c088b7fc7c103c00ca494), // keccak256("zksyncCreate2")
+                            bytes32(uint256(uint160(UNISWAP_V3_FACTORY))), // sender
+                            keccak256(abi.encode(tokenA, tokenB, fee)), // salt
+                            UNISWAP_V3_POOL_INIT_CODE_HASH, // bytecode hash
+                            bytes32(0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470) // constructor input hash: keccak256("")
+                        )
+                    )
+                )
+            )
+        );
     }
 }

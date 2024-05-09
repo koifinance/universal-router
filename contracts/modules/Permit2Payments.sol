@@ -3,6 +3,8 @@ pragma solidity ^0.8.17;
 import {IAllowanceTransfer} from 'permit2/src/interfaces/IAllowanceTransfer.sol';
 import {SafeCast160} from 'permit2/src/libraries/SafeCast160.sol';
 import {Payments} from './Payments.sol';
+import {Constants} from '../libraries/Constants.sol';
+import {RouterImmutables} from '../base/RouterImmutables.sol';
 
 /// @title Payments through Permit2
 /// @notice Performs interactions with Permit2 to transfer tokens
@@ -22,9 +24,8 @@ abstract contract Permit2Payments is Payments {
 
     /// @notice Performs a batch transferFrom on Permit2
     /// @param batchDetails An array detailing each of the transfers that should occur
-    function permit2TransferFrom(IAllowanceTransfer.AllowanceTransferDetails[] memory batchDetails, address owner)
-        internal
-    {
+    function permit2TransferFrom(IAllowanceTransfer.AllowanceTransferDetails[] memory batchDetails) internal {
+        address owner = msg.sender;
         uint256 batchLength = batchDetails.length;
         for (uint256 i = 0; i < batchLength; ++i) {
             if (batchDetails[i].from != owner) revert FromAddressIsNotOwner();

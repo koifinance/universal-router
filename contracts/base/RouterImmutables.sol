@@ -8,24 +8,21 @@ import {IWETH9} from '../interfaces/external/IWETH9.sol';
 struct RouterParameters {
     address permit2;
     address weth9;
-    address seaportV1_5;
-    address seaportV1_4;
-    address openseaConduit;
+    address seaport;
     address nftxZap;
     address x2y2;
     address foundation;
     address sudoswap;
-    address elementMarket;
     address nft20Zap;
     address cryptopunks;
-    address looksRareV2;
+    address looksRare;
     address routerRewardsDistributor;
     address looksRareRewardsDistributor;
     address looksRareToken;
     address v2Factory;
-    address v2Implementation;
     address v3Factory;
-    address clImplementation;
+    bytes32 pairInitCodeHash;
+    bytes32 poolInitCodeHash;
 }
 
 struct Route {
@@ -43,14 +40,8 @@ contract RouterImmutables {
     /// @dev Permit2 address
     IAllowanceTransfer internal immutable PERMIT2;
 
-    /// @dev Seaport 1.5 address
-    address internal immutable SEAPORT_V1_5;
-
-    /// @dev Seaport 1.4 address
-    address internal immutable SEAPORT_V1_4;
-
-    /// @dev The address of OpenSea's conduit used in both Seaport 1.4 and Seaport 1.5
-    address internal immutable OPENSEA_CONDUIT;
+    /// @dev Seaport address
+    address internal immutable SEAPORT;
 
     /// @dev The address of NFTX zap contract for interfacing with vaults
     address internal immutable NFTX_ZAP;
@@ -64,17 +55,14 @@ contract RouterImmutables {
     // @dev The address of Sudoswap's router
     address internal immutable SUDOSWAP;
 
-    // @dev The address of Element Market
-    address internal immutable ELEMENT_MARKET;
-
     // @dev the address of NFT20's zap contract
     address internal immutable NFT20_ZAP;
 
     // @dev the address of Larva Lab's cryptopunks marketplace
     address internal immutable CRYPTOPUNKS;
 
-    /// @dev The address of LooksRareV2
-    address internal immutable LOOKS_RARE_V2;
+    /// @dev The address of LooksRare
+    address internal immutable LOOKS_RARE;
 
     /// @dev The address of LooksRare token
     ERC20 internal immutable LOOKS_RARE_TOKEN;
@@ -88,40 +76,32 @@ contract RouterImmutables {
     /// @dev The address of UniswapV2Factory
     address internal immutable UNISWAP_V2_FACTORY;
 
-    /// @dev The address of the UniswapV2 Pool implementation
-    address internal immutable UNISWAP_V2_IMPLEMENTATION;
+    /// @dev The address of UniswapV2Pair initcodehash
+    bytes32 internal immutable UNISWAP_V2_PAIR_INIT_CODE_HASH;
 
     /// @dev The address of UniswapV3Factory
     address internal immutable UNISWAP_V3_FACTORY;
 
-    /// @dev The address of the UniswapV3 Pool implementation
-    address internal immutable UNISWAP_V3_IMPLEMENTATION;
-
-    enum Spenders {
-        OSConduit,
-        Sudoswap
-    }
+    /// @dev The address of UniswapV3Pool initcodehash
+    bytes32 internal immutable UNISWAP_V3_POOL_INIT_CODE_HASH;
 
     constructor(RouterParameters memory params) {
         PERMIT2 = IAllowanceTransfer(params.permit2);
         WETH9 = IWETH9(params.weth9);
-        SEAPORT_V1_5 = params.seaportV1_5;
-        SEAPORT_V1_4 = params.seaportV1_4;
-        OPENSEA_CONDUIT = params.openseaConduit;
+        SEAPORT = params.seaport;
         NFTX_ZAP = params.nftxZap;
         X2Y2 = params.x2y2;
         FOUNDATION = params.foundation;
         SUDOSWAP = params.sudoswap;
-        ELEMENT_MARKET = params.elementMarket;
         NFT20_ZAP = params.nft20Zap;
         CRYPTOPUNKS = params.cryptopunks;
-        LOOKS_RARE_V2 = params.looksRareV2;
+        LOOKS_RARE = params.looksRare;
         LOOKS_RARE_TOKEN = ERC20(params.looksRareToken);
         LOOKS_RARE_REWARDS_DISTRIBUTOR = params.looksRareRewardsDistributor;
         ROUTER_REWARDS_DISTRIBUTOR = params.routerRewardsDistributor;
         UNISWAP_V2_FACTORY = params.v2Factory;
-        UNISWAP_V2_IMPLEMENTATION = params.v2Implementation;
+        UNISWAP_V2_PAIR_INIT_CODE_HASH = params.pairInitCodeHash;
         UNISWAP_V3_FACTORY = params.v3Factory;
-        UNISWAP_V3_IMPLEMENTATION = params.clImplementation;
+        UNISWAP_V3_POOL_INIT_CODE_HASH = params.poolInitCodeHash;
     }
 }

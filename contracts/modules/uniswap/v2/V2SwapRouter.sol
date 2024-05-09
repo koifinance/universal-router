@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.17;
 
-import {IPool} from 'contracts/interfaces/external/IPool.sol';
+import {IPool} from '../../../interfaces/external/IPool.sol';
 import {UniswapV2Library} from './UniswapV2Library.sol';
 import {RouterImmutables, Route} from '../../../base/RouterImmutables.sol';
 import {Payments} from '../../Payments.sol';
@@ -38,7 +38,6 @@ abstract contract V2SwapRouter is RouterImmutables, Permit2Payments {
                 (nextPair, token0) = i < finalPairIndex
                     ? UniswapV2Library.pairAndToken0For(
                         UNISWAP_V2_FACTORY,
-                        UNISWAP_V2_IMPLEMENTATION,
                         routes[i + 1].from,
                         routes[i + 1].to,
                         routes[i + 1].stable
@@ -64,7 +63,7 @@ abstract contract V2SwapRouter is RouterImmutables, Permit2Payments {
         address payer
     ) internal {
         address firstPair = UniswapV2Library.pairFor(
-            UNISWAP_V2_FACTORY, UNISWAP_V2_IMPLEMENTATION, routes[0].from, routes[0].to, routes[0].stable
+            UNISWAP_V2_FACTORY, routes[0].from, routes[0].to, routes[0].stable
         );
         if (
             amountIn != Constants.ALREADY_PAID // amountIn of 0 to signal that the pair already has the tokens
@@ -95,7 +94,7 @@ abstract contract V2SwapRouter is RouterImmutables, Permit2Payments {
         address payer
     ) internal {
         (uint256 amountIn, address firstPair) =
-            UniswapV2Library.getAmountInMultihop(UNISWAP_V2_FACTORY, UNISWAP_V2_IMPLEMENTATION, amountOut, routes);
+            UniswapV2Library.getAmountInMultihop(UNISWAP_V2_FACTORY, amountOut, routes);
         if (amountIn > amountInMaximum) revert V2TooMuchRequested();
 
         payOrPermit2Transfer(routes[0].from, payer, firstPair, amountIn);

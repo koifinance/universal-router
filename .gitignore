@@ -18,3 +18,10 @@ typechain-types
 cache
 cache_hardhat
 artifacts
+
+deploy/
+deployments-zk/
+
+deploy-addresses/*
+deployed_contracts/
+arguments.js
