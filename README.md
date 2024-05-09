@@ -1,6 +1,6 @@
 # Universal Router
 
-The Uniswap Universal Router was adapted to work with the Velodrome ecosystem. This router allows a single swap to be routed through both Velodrome Finance V2 pools and Slipstream (CL) pools. 
+The Uniswap Universal Router was adapted to work with the Koi Finance ecosystem. This router allows a single swap to be routed through both Koi Finance V2 pools and CL pools. 
 
 To see the commit of the smart contracts that was used in the latest deployment, see branch `deployed-commit`. To see the addresses of this latest deployment on each network, see folder `deploy-addresses`.
 
@@ -20,7 +20,7 @@ Transactions are encoded using a string of commands, allowing users to have maxi
 
 ## Contract Overview
 
-The Universal Router codebase consists of the `UniversalRouter` contract, and all of its dependencies. The purpose of the `UniversalRouter` is to allow users to unify swaps on both Velodrome V2 and CL with NFT purchases across 8 marketplaces, in a single transaction. This repository is lightly modified from the 
+The Universal Router codebase consists of the `UniversalRouter` contract, and all of its dependencies. The purpose of the `UniversalRouter` is to allow users to unify swaps on both Koi Finance V2 and CL with NFT purchases across 8 marketplaces, in a single transaction. This repository is lightly modified from the 
 Uniswap `UniversalRouter` repository to be compatible with V2 and CL pools.
 
 `UniversalRouter` integrates with [Permit2](https://github.com/Uniswap/permit2), to enable users to have more safety, flexibility, and control over their ERC20 token approvals.
