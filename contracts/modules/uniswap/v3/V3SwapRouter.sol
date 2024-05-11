@@ -21,7 +21,7 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, IUniswapV3S
     error V3TooMuchRequested();
     error V3InvalidAmountOut();
     error V3InvalidCaller();
-    event SwapIn(bool zeroForOne, int256 amount0Delta, int256 amount1Delta, uint256 amount, uint256 amountOutMinimum);
+    //event SwapIn(bool zeroForOne, int256 amount0Delta, int256 amount1Delta, uint256 amount, uint256 amountOutMinimum);
 
     /// @dev Used as the placeholder value for maxAmountIn, because the computed amount in for an exact output swap
     /// can never actually be this value
@@ -105,7 +105,7 @@ abstract contract V3SwapRouter is RouterImmutables, Permit2Payments, IUniswapV3S
             else
                 amountIn = uint256(-amount0Delta);
 
-            emit SwapIn(zeroForOne, amount0Delta, amount1Delta, amountIn, amountOutMinimum);
+            //emit SwapIn(zeroForOne, amount0Delta, amount1Delta, amountIn, amountOutMinimum);
 
             // decide whether to continue or terminate
             if (hasMultiplePools) {
